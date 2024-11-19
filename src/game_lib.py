@@ -72,6 +72,3 @@ class TicTacToe:
                 break
 
             self.switch_player()
-
-TicTacToe = TicTacToe()
-TicTacToe.game()
