@@ -13,7 +13,7 @@ def main():
             break
         elif entity == 'client':
             process = Client()
-            process.start("192.168.35.25", 12345)
+            process.start("127.0.1.1", 12345)
             break
     print("Exiting Process...")
     sys.exit()

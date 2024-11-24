@@ -11,8 +11,23 @@ class Client:
         self.socket.connect((host, port))
         print(f"Connected to server at {host}:{port}")
 
-        # TODO: code for what client receives as message to play game and see game state
+        while True:
+            try:
+                # Receive messages from the server
+                message = self.socket.recv(1024).decode()
+                print(message)
 
+                if "Your turn" in message:
+                    move = input("Enter your move (1-9): ")
+                    self.socket.sendall(move.encode())
+                elif "wins!" in message or "draw" in message:
+                    print("Game over!")
+                    break
+            except ConnectionResetError:
+                print("Server connection lost.")
+                break
+
+        self.socket.close()
 
 if __name__ == "__main__":
     client = Client()
