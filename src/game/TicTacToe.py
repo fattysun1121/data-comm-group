@@ -2,6 +2,7 @@ class TicTacToe:
     def __init__(self):
         self.board = [[' ' for _ in range(3)] for _ in range(3)]
         self.current_player = 'X'
+        self.switchFlag = True
     
     def display_board(self):
         for row in self.board:
@@ -13,8 +14,10 @@ class TicTacToe:
 
         if self.board[row][col] == ' ':
             self.board[row][col] = self.current_player
+            self.switchFlag = True
         else:
             print("That place is already taken. Please choose another.") 
+            self.switchFlag = False 
         
     def check_win(self):
         for i in range(3):
@@ -71,7 +74,7 @@ class TicTacToe:
                 print("Draw!")
                 break
 
-            self.switch_player()
+            self.switch_player(self.switchFlag)
 
 TicTacToe = TicTacToe()
 TicTacToe.game()
