@@ -1,3 +1,6 @@
 # ignore the cache files
 /src/__pycache__
+
+# Harley
 .venv
+my-reminder.*

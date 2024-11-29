@@ -1,18 +1,35 @@
 import socket
-#import threading
+import threading
+import time
 import sys
 from game_lib import TicTacToe
 
 class Server:
-    
-    def __init__(self, host: str = socket.gethostbyname(socket.gethostname()), port: int = 12345):
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+   
+    def __init__(self, host: str = socket.gethostbyname(socket.gethostname())):
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # Socket for game hosting
         self.host = host
-        self.port = port
+        self.port = 6001
         self.running = False
         self.connections = []
+        self.MCAST_GRP = "224.1.1.1"
+        self.MCAST_PORT = 5007
 
-    def handle_game(self):
+
+    # Announce server information to interested clients
+    def multicast_announcement(self):
+        multicast_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+        multicast_sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 1)
+        
+        message = f"Game Server|IP:{socket.gethostbyname(socket.gethostname())}|Port:{self.port}"
+        print(f"Broadcasting: {message}")
+        while True:
+            multicast_sock.sendto(message.encode('utf-8'), (self.MCAST_GRP, self.MCAST_PORT))
+            
+            time.sleep(2)
+        print(f"Broadcast ended.")
+        
+    def host_game(self):
         game = TicTacToe()
         player_turn = 0  # 0 for Player 1 (X), 1 for Player 2 (O)
 
@@ -59,9 +76,13 @@ class Server:
         self.socket.close()
 
     def start(self):
+        # Start a thread to broadcast server information
+        multicast_thread = threading.Thread(target=self.multicast_announcement, daemon=True)
+        multicast_thread.start()
+
         # Start server and start listening for connections
         self.socket.bind((self.host, self.port))
-        self.socket.listen(2)
+        self.socket.listen(5)  # only 2 players are required, the rest will be in a queue
         self.socket.settimeout(60) # timeout of 60 seconds
         self.running  = True
 
@@ -76,7 +97,7 @@ class Server:
 
         print("Both players are connected. Starting the game!")
 
-        self.handle_game()
+        self.host_game()
 
         print("Game over. Server shutting down.")
 
