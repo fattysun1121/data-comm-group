@@ -74,7 +74,4 @@ class TicTacToe:
                 print("Draw!")
                 break
 
-            self.switch_player(self.switchFlag)
-
-TicTacToe = TicTacToe()
-TicTacToe.game()
+            self.switch_player()
