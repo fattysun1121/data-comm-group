@@ -3,7 +3,7 @@ import threading
 import time
 import sys
 from game_lib import TicTacToe
-
+import constants
 class Server:
    
     def __init__(self, host: str = socket.gethostbyname(socket.gethostname())):
@@ -12,9 +12,6 @@ class Server:
         self.port = 6001
         self.running = False
         self.connections = []
-        self.MCAST_GRP = "224.1.1.1"
-        self.MCAST_PORT = 5007
-
 
     # Announce server information to interested clients
     def multicast_announcement(self):
@@ -24,7 +21,7 @@ class Server:
         message = f"Game Server|IP:{socket.gethostbyname(socket.gethostname())}|Port:{self.port}"
         print(f"Broadcasting: {message}")
         while True:
-            multicast_sock.sendto(message.encode('utf-8'), (self.MCAST_GRP, self.MCAST_PORT))
+            multicast_sock.sendto(message.encode('utf-8'), (constants.MCAST_GRP, constants.MCAST_PORT))
             
             time.sleep(2)
         print(f"Broadcast ended.")
@@ -83,7 +80,6 @@ class Server:
         # Start server and start listening for connections
         self.socket.bind((self.host, self.port))
         self.socket.listen(5)  # only 2 players are required, the rest will be in a queue
-        self.socket.settimeout(60) # timeout of 60 seconds
         self.running  = True
 
         print(f"Server is running on {self.host}:{self.port}")
