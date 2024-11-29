@@ -9,7 +9,7 @@ class Server:
     def __init__(self, host: str = socket.gethostbyname(socket.gethostname())):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # Socket for game hosting
         self.host = host
-        self.port = 6001
+        self.port = 6003
         self.running = False
         self.connections = []
 
