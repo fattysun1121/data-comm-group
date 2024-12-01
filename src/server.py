@@ -20,11 +20,14 @@ class Server:
         
         message = f"Game Server|IP:{socket.gethostbyname(socket.gethostname())}|Port:{self.port}"
         print(f"Broadcasting: {message}")
-        while True:
-            multicast_sock.sendto(message.encode('utf-8'), (constants.MCAST_GRP, constants.MCAST_PORT))
-            
-            time.sleep(2)
-        print(f"Broadcast ended.")
+        try:
+            while True:
+                multicast_sock.sendto(message.encode('utf-8'), (constants.MCAST_GRP, constants.MCAST_PORT))
+                
+                time.sleep(2)
+        except KeyboardInterrupt:
+            multicast_sock.close()
+            print(f"Broadcast ended.")
         
     def host_game(self):
         game = TicTacToe()
@@ -73,29 +76,31 @@ class Server:
         self.socket.close()
 
     def start(self):
-        # Start a thread to broadcast server information
-        multicast_thread = threading.Thread(target=self.multicast_announcement, daemon=True)
-        multicast_thread.start()
+        try:
+            # Start a thread to broadcast server information
+            multicast_thread = threading.Thread(target=self.multicast_announcement, daemon=True)
+            multicast_thread.start()
 
-        # Start server and start listening for connections
-        self.socket.bind((self.host, self.port))
-        self.socket.listen(5)  # only 2 players are required, the rest will be in a queue
-        self.running  = True
+            # Start server and start listening for connections
+            self.socket.bind((self.host, self.port))
+            self.socket.listen(5)  # only 2 players are required, the rest will be in a queue
+            self.running  = True
 
-        print(f"Server is running on {self.host}:{self.port}")
-        print("Waiting for players to connect...")
+            print(f"Server is running on {self.host}:{self.port}")
+            print("Waiting for players to connect...")
+            while True:
+                # Wait for two players
+                while len(self.connections) < 2:
+                    conn, addr = self.socket.accept()
+                    self.connections.append(conn)
+                    print(f"Player {len(self.connections)} connected from {addr}")
 
-        # Wait for two players
-        while len(self.connections) < 2:
-            conn, addr = self.socket.accept()
-            self.connections.append(conn)
-            print(f"Player {len(self.connections)} connected from {addr}")
+                print("Both players are connected. Starting the game!")
 
-        print("Both players are connected. Starting the game!")
-
-        self.host_game()
-
-        print("Game over. Server shutting down.")
+                self.host_game()
+        except KeyboardInterrupt:
+            self.socket.close()
+            print("Game over. Server shutting down.")
 
 
     def shutdown(self):
@@ -104,12 +109,6 @@ class Server:
         self.running = False
         self.socket.close()
         sys.exit(0)
-
-
-
-
-
-
 
 
 if __name__ == "__main__":

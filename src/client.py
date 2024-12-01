@@ -60,27 +60,29 @@ class Client:
                     break
                 elif cmd.startswith("display"):
                     continue
-        except KeyboardInterrupt:
-            print("Client shutting down.")
+        
 
-        # Run game after connection is made        
-        while True:
-            try:
-                # Receive messages from the server
-                message = self.socket.recv(1024).decode()
-                print(message)
+            # Run game after connection is made        
+            while True:
+                try:
+                    # Receive messages from the server
+                    message = self.socket.recv(1024).decode()
+                    print(message)
 
-                if "Your turn" in message:
-                    move = input("Enter your move (1-9): ")
-                    self.socket.sendall(move.encode())
-                elif "wins!" in message or "draw" in message:
-                    print("Game over!")
+                    if "Your turn" in message:
+                        move = input("Enter your move (1-9): ")
+                        self.socket.sendall(move.encode())
+                    elif "wins!" in message or "draw" in message:
+                        print("Game over!")
+                        break
+                except ConnectionResetError:
+                    print("Server connection lost.")
                     break
-            except ConnectionResetError:
-                print("Server connection lost.")
-                break
-
-        self.socket.close()
+        except KeyboardInterrupt:
+            self.socket.close()
+            print("Client shutting down.")
+        finally:
+            self.socket.close()
 
 if __name__ == "__main__":
     client = Client()
