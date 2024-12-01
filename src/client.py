@@ -72,9 +72,8 @@ class Client:
                     if "Your turn" in message:
                         move = input("Enter your move (1-9): ")
                         self.socket.sendall(move.encode())
-                    elif "wins!" in message or "draw" in message:
+                    elif "wins!" in message:
                         print("Game over!")
-                        break
                 except ConnectionResetError:
                     print("Server connection lost.")
                     break

@@ -4,14 +4,17 @@ import time
 import sys
 from game_lib import TicTacToe
 import constants
+
 class Server:
    
     def __init__(self, host: str = socket.gethostbyname(socket.gethostname())):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # Socket for game hosting
         self.host = host
-        self.port = 6003
-        self.running = False
+        self.port = 6001
         self.connections = []
+        self.game_start = False
+        self.connection_mutex = threading.Lock()
+
 
     # Announce server information to interested clients
     def multicast_announcement(self):
@@ -32,10 +35,9 @@ class Server:
     def host_game(self):
         game = TicTacToe()
         player_turn = 0  # 0 for Player 1 (X), 1 for Player 2 (O)
-
+        draw = False
         while True:
             current_conn = self.connections[player_turn]
-            opponent_conn = self.connections[1 - player_turn]
 
             # Send the game board to the current player
             board_state = "\n".join([" | ".join(row) for row in game.board]) + "\n"
@@ -58,23 +60,46 @@ class Server:
 
             # Check for win/draw
             if game.check_win():
-                for conn in self.connections:
-                    conn.sendall(f"Player {game.current_player} wins!\n".encode())
+                for i in range(2):
+                    self.connections[i].sendall(f"Player {game.current_player} wins!\n".encode())
                 break
             elif game.check_draw():
-                for conn in self.connections:
-                    conn.sendall("It's a draw!\n".encode())
+                for i in range(2):
+                    self.connections[i].sendall("It's a draw!\n".encode())
+                    self.connections[i].sendall("Rematch!\n".encode())
+                draw = True
                 break
 
             # Switch turns
             game.switch_player()
             player_turn = 1 - player_turn
 
-        # Close connections after the game
-        for conn in self.connections:
-            conn.close()
-        self.socket.close()
+        # Close the loser's connection and kick them off the connection list
+        if not draw:
+            self.connection_mutex.acquire()
+            # When someone wins, player_turn stores the winner, 1 - player_turn is the loser
+            self.connections[1 - player_turn].close()
+            del self.connections[1 - player_turn]
+            self.connection_mutex.release()
+        # When draw, do a rematch
+  
 
+    def connect_player(self):
+        # Wait for two players
+        while True:
+            self.connection_mutex.acquire()
+            if len(self.connections) >= 2:
+                self.game_start = True
+            else:
+                self.game_start = False
+            self.connection_mutex.release()
+            conn, addr = self.socket.accept()
+            self.connection_mutex.acquire()
+            self.connections.append(conn)
+            print(f"Player {len(self.connections)} connected from {addr}")
+            self.connection_mutex.release()
+
+    
     def start(self):
         try:
             # Start a thread to broadcast server information
@@ -84,20 +109,18 @@ class Server:
             # Start server and start listening for connections
             self.socket.bind((self.host, self.port))
             self.socket.listen(5)  # only 2 players are required, the rest will be in a queue
-            self.running  = True
 
             print(f"Server is running on {self.host}:{self.port}")
             print("Waiting for players to connect...")
+
+            connection_thread = threading.Thread(target=self.connect_player, daemon=True)
+            connection_thread.start()
             while True:
-                # Wait for two players
-                while len(self.connections) < 2:
-                    conn, addr = self.socket.accept()
-                    self.connections.append(conn)
-                    print(f"Player {len(self.connections)} connected from {addr}")
-
-                print("Both players are connected. Starting the game!")
-
-                self.host_game()
+                if self.game_start:
+                    print("Starting game..")
+                    self.host_game()
+                    print("Game ended")
+                
         except KeyboardInterrupt:
             self.socket.close()
             print("Game over. Server shutting down.")
@@ -106,7 +129,6 @@ class Server:
     def shutdown(self):
         print("\n")
         print("Shutting down server...")
-        self.running = False
         self.socket.close()
         sys.exit(0)
 
