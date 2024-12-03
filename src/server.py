@@ -14,6 +14,8 @@ class Server:
         self.connections = []
         self.game_start = False
         self.connection_mutex = threading.Lock()
+        self.winner_score = 0
+        self.last_winner = None
 
 
     # Announce server information to interested clients
@@ -33,10 +35,19 @@ class Server:
             print(f"Broadcast ended.")
         
     def host_game(self):
+        if len(self.connections) < 2:   # waits until at least two clients are connected
+            print("Not enough players to start the game.")
+            return
+        
         game = TicTacToe()
         player_turn = 0  # 0 for Player 1 (X), 1 for Player 2 (O)
         draw = False
+
         while True:
+            if player_turn >= len(self.connections):
+                print(f"Invalid turn index {player_turn}. Ending game.")
+                break
+
             current_conn = self.connections[player_turn]
 
             # Send the game board to the current player
@@ -60,8 +71,15 @@ class Server:
 
             # Check for win/draw
             if game.check_win():
+                if self.last_winner != game.current_player:
+                    self.winner_score = 0
+                
+                self.winner_score += 1
                 for i in range(2):
                     self.connections[i].sendall(f"Player {game.current_player} wins!\n".encode())
+                    self.connections[i].sendall(f"Player {game.current_player}'s score: {self.winner_score}".encode())
+
+                    self.last_winner = game.current_player # update the winner
                 break
             elif game.check_draw():
                 for i in range(2):
@@ -116,8 +134,13 @@ class Server:
             connection_thread = threading.Thread(target=self.connect_player, daemon=True)
             connection_thread.start()
             while True:
+                if len(self.connections) < 2:
+                    print("Waiting for more players to connect...\n")
+                    time.sleep(2)
+                    continue
+
                 if self.game_start:
-                    print("Starting game..")
+                    print("Starting game...")
                     self.host_game()
                     print("Game ended")
                 

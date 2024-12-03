@@ -66,7 +66,7 @@ class TicTacToe:
             if self.check_win() == True:
                 self.display_board()
                 winner = "Player 1" if self.current_player == 'X' else "Player 2"
-                print("The winner is " + winner)
+                print("The winner is " + winner + "\n")
                 break
 
             if self.check_draw():
