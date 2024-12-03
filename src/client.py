@@ -20,7 +20,7 @@ class Client:
         mreq = struct.pack("4sl", socket.inet_aton(constants.MCAST_GRP), socket.INADDR_ANY)
         sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
 
-        print("Listening for game servers...")
+        print("Listening for game servers...\n")
         
         while True:
             data, addr = sock.recvfrom(1024)
@@ -41,7 +41,7 @@ class Client:
                 self.serv_mutex.acquire()
 
                 for i, serv in enumerate(self.serv_list):
-                    print(f'Server Number #{i}: {serv}')
+                    print(f'\nServer Number #{i}: {serv}')
 
                 self.serv_mutex.release()
 
@@ -73,7 +73,8 @@ class Client:
                         move = input("Enter your move (1-9): ")
                         self.socket.sendall(move.encode())
                     elif "wins!" in message:
-                        print("Game over!")
+                        print("Game over!\n")
+                        
                 except ConnectionResetError:
                     print("Server connection lost.")
                     break
