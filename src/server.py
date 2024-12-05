@@ -16,6 +16,7 @@ class Server:
         self.connection_mutex = threading.Lock()
         self.winner_score = 0
         self.last_winner = None
+        self.timer = None
 
 
     # Announce server information to interested clients
@@ -100,7 +101,6 @@ class Server:
             del self.connections[1 - player_turn]
             self.connection_mutex.release()
         # When draw, do a rematch
-  
 
     def connect_player(self):
         # Wait for two players
@@ -135,15 +135,21 @@ class Server:
             connection_thread.start()
             while True:
                 if len(self.connections) < 2:
-                    print("Waiting for more players to connect...\n")
-                    time.sleep(2)
-                    continue
+                    self.start_timer(timeout=30)
+                    while True:
+                        print("Waiting for more players to connect...\n")
+                        time.sleep(2)
+                        if self.check_time():
+                            self.check_shutdown()
+                        
+                else:
+                    self.reset_timer()
 
                 if self.game_start:
                     print("Starting game...")
                     self.host_game()
                     print("Game ended")
-                
+            
         except KeyboardInterrupt:
             self.socket.close()
             print("Game over. Server shutting down.")
@@ -154,6 +160,34 @@ class Server:
         print("Shutting down server...")
         self.socket.close()
         sys.exit(0)
+    
+        # Timer functions
+    def start_timer(self, timeout): #Start timer
+        if self.timer: #Cancel any existing timer
+            self.timer.cancel()
+        self.timer_start_time = time.time()
+        self.timeout = timeout
+        self.timer = threading.Timer(timeout, self.check_shutdown)
+        self.timer.start()
+        print(f"Timer started for {timeout} seconds.")
+    
+    def check_time(self):
+        if self.timer_start_time is None:
+            return False
+        passed_time = time.time() - self.timer_start_time
+        return passed_time > self.timeout
+    
+    def check_shutdown(self): #Check server and if there are no players, shut it down
+        if not self.connections:
+            print("No players connected. Shutting down the server due to inactivity.")
+            self.shutdown()
+        else:
+            print("Player(s) are connected. Server will remain active.")
+    
+    def reset_timer(self): #Reset timer if players connect
+        if self.timer and self.timer.is_alive():
+            self.timer.cancel()
+            self.timer = None
 
 
 if __name__ == "__main__":
