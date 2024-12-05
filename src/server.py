@@ -135,7 +135,7 @@ class Server:
             connection_thread.start()
             while True:
                 if len(self.connections) < 2:
-                    self.start_timer(timeout=10)
+                    self.start_timer(timeout=30)
                     while True:
                         print("Waiting for more players to connect...\n")
                         time.sleep(2)
