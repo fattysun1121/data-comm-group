@@ -104,18 +104,29 @@ class Server:
 
     def connect_player(self):
         # Wait for two players
-        while True:
-            self.connection_mutex.acquire()
-            if len(self.connections) >= 2:
-                self.game_start = True
-            else:
-                self.game_start = False
-            self.connection_mutex.release()
-            conn, addr = self.socket.accept()
-            self.connection_mutex.acquire()
-            self.connections.append(conn)
-            print(f"Player {len(self.connections)} connected from {addr}")
-            self.connection_mutex.release()
+        self.start_timer(timeout=10)
+        while len(self.connections) < 2:
+            try: 
+                conn, addr = self.socket.accept()
+                with self.connection_mutex:
+                    self.connections.append(conn)
+                    print(f"Player {len(self.connections)} connected from {addr}")
+
+                self.reset_timer()
+                
+                if len(self.connections) == 2:
+                    print("Two players connected. Starting the game...")
+                    break
+                
+            except socket.timeout:
+                if self.check_time():
+                    print("Timer expired while waiting for players. Shutting down...\n")
+                    self.shutdown()
+                    return
+            
+        if len(self.connections) < 2:
+            print("Not enough players connected. Shutting down...\n")
+            self.shutdown()
 
     
     def start(self):
@@ -129,27 +140,17 @@ class Server:
             self.socket.listen(5)  # only 2 players are required, the rest will be in a queue
 
             print(f"Server is running on {self.host}:{self.port}")
-            print("Waiting for players to connect...")
+            print("Waiting for players to connect...\n")
 
             connection_thread = threading.Thread(target=self.connect_player, daemon=True)
             connection_thread.start()
-            while True:
-                if len(self.connections) < 2:
-                    self.start_timer(timeout=30)
-                    while True:
-                        print("Waiting for more players to connect...\n")
-                        time.sleep(2)
-                        if self.check_time():
-                            self.check_shutdown()
-                        
-                else:
-                    self.reset_timer()
-
-                if self.game_start:
-                    print("Starting game...")
-                    self.host_game()
-                    print("Game ended")
             
+            while(len(self.connections) < 2):
+                if len(self.connections) == 2:
+                    print("Staring game...\n")
+                    self.host_game()
+                    print("Game ended.")
+                        
         except KeyboardInterrupt:
             self.socket.close()
             print("Game over. Server shutting down.")
